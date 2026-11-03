@@ -95,6 +95,16 @@ Calibration requirements:
 - Track length must be calculated from the actual chosen path/geometry, not the image dimensions.
 - An image alone does not establish physical scale or guarantee accurate boundaries.
 
+M1.1 track contract:
+- The persisted representation is an OptiLine-owned JSON document with a schema version, track identity/name, coordinate convention (`x_right_y_up_ccw_rad`), units, outer/inner boundaries, start/finish line and direction, and calibration provenance.
+- Boundaries are closed polylines stored without repeating the first point. Canonical orientation is outer counter-clockwise and inner clockwise; the loader normalizes orientation and records a warning if it reverses a boundary.
+- The start/finish is a directed segment spanning the corridor plus a unit forward vector.
+- A calibrated track is stored in metres and may report physical lengths. An uncalibrated track is editable but uses `units="unspecified"`, is not simulation-ready and must not report physical lap lengths or speeds.
+- Derived length, corridor width, curvature and validation results are computed on load and are not trusted from disk.
+- TUM CSV, CommonRoad and OpenDRIVE are future import/export adapters only. They are not the internal schema.
+- M1.1 supports the known-distance calibration path. Known track dimensions and image tracing remain later work.
+- M1.1 supports corridors whose derived nearest-point centerline is continuous. A centerline segment longer than 5x the expected uniform spacing is reported as `CENTERLINE_DISCONTINUITY` and the track is not simulation-ready. General non-convex centerline generation remains later work.
+
 ## 6. Vehicle model progression
 
 Start with a kinematic bicycle model for early integration and visual validation. Progress to a dynamic bicycle model with mass, yaw inertia, tyre-force approximation, steering limits, longitudinal acceleration/braking and lateral dynamics. Consider a four-wheel model only when tests and product goals justify its complexity.
@@ -124,6 +134,8 @@ Evaluate CasADi and an appropriate constrained optimal-control formulation befor
 
 Provide a benchmark that is deterministic and repeatable. Distinguish solver convergence from proof of a global optimum.
 
+M1.1 does not implement the optimiser. The first optimiser work remains a later, bounded experiment after the track and vehicle interfaces are stable. Use existing racing-line projects as references first; verify licence, provenance and compatibility before copying or porting code. Record the solver version, options, tolerances, warm-start state and validation results with every benchmark. Do not copy LGPL TUM code into the core without legal review.
+
 ## 8. Reinforcement learning
 
 RL is complementary to the optimiser, not a replacement for it. The optimiser supplies a benchmark and may optionally provide a reference trajectory.
@@ -152,9 +164,10 @@ The RL environment must use the same simulation model as validation and optimisa
 - Acceptance: clean project skeleton, documented decisions, no unnecessary dependencies.
 
 ### M1 — Track domain and editor foundation
-- Define a versioned track schema, world coordinate system and calibration workflow.
-- Implement track geometry validation and a minimal manual editor.
-- Acceptance: create, save and reload a simple closed circuit; verify known distances and calculated length.
+- **M1.1 (approved current slice):** define the versioned track schema, coordinate system, known-distance calibration, core geometry validation and analytic fixtures. Do not include vehicle dynamics, the optimiser, RL, image recognition or the full UI.
+- **M1.1 acceptance:** create, save and reload analytic circle/oval tracks; verify calibration and known distances; validate boundaries, corridor width and start/finish; compute length within documented tolerances; round-trip JSON.
+- **M1.2 (later):** implement the minimal manual editor and its save/reload workflow.
+- **M1 acceptance:** tracks from the editor use the same normalised geometry contract; verify known distances and calculated length.
 
 ### M2 — Deterministic vehicle prototype
 - Implement a kinematic bicycle model and a fixed-step simulation loop.
@@ -168,6 +181,7 @@ The RL environment must use the same simulation model as validation and optimisa
 ### M4 — Baseline path and speed optimiser
 - Produce a track-valid path and a physically feasible speed profile.
 - Add lap timing and independent feasibility checks.
+- Evaluate CasADi/IPOPT in a bounded experiment only after the vehicle and track interfaces are stable; record solver metadata and validate every candidate lap in the authoritative simulation.
 - Acceptance: valid laps on simple test circuits; optimised time is compared with a baseline and no improvement is claimed without measurement.
 
 ### M5 — Telemetry and comparison
@@ -190,6 +204,11 @@ Milestones can be reordered only with a stated reason. Do not implement the enti
 ## 11. Testing and quality gates
 
 - Unit-test geometry, coordinate transforms, unit conversions and lap timing.
+- Test schema-version rejection, unknown-field rejection and JSON round-trip behavior.
+- Test calibration with known distances, forward/inverse transforms and missing/invalid calibration.
+- Test closed boundaries, self-intersections, inner/outer ordering, corridor width and start/finish faults.
+- Test derived-centerline continuity and ensure unsupported non-convex corridors are not marked simulation-ready.
+- Test analytic circle/oval lengths, widths and curvature within documented numerical tolerances; derive tolerances from discretization rather than tightening them arbitrarily.
 - Test deterministic physics with fixed initial states and inputs.
 - Test track validation for invalid geometry and boundary departures.
 - Test optimiser feasibility independently of its objective score.

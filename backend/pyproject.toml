@@ -7,13 +7,18 @@ name = "optiline"
 version = "0.0.0"
 description = "Browser-based 2D vehicle-dynamics and racing-line optimisation simulator."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "numpy>=2.0",
+    "pydantic>=2.7",
+    "shapely>=2.2",
+]
 
 [dependency-groups]
 dev = [
     "mypy>=1.10",
     "pytest>=8.0",
     "ruff>=0.6",
+    "types-shapely>=2.1.0.20261030",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -34,3 +39,4 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.12"
 strict = true
 files = ["src"]
+plugins = ["pydantic.mypy"]

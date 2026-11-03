@@ -1,6 +1,6 @@
 # OptiLine Dependency and Licence Register
 
-**Status:** M0. Keep this register current when adding, deferring or rejecting a dependency.
+**Status:** M1.1. Keep this register current when adding, deferring or rejecting a dependency.
 **Project licence:** Not selected. Resolve before public distribution or substantial third-party code reuse.
 
 ## Adopted
@@ -12,8 +12,12 @@
 | pytest | 9.2.0 | MIT | Tests | M0 |
 | Ruff | 0.17.3 | MIT | Linting and formatting | M0 |
 | mypy | 2.4.1 | MIT | Static type checking | M0 |
+| NumPy | 2.5.4 | BSD-3-Clause | Numeric geometry, resampling, curvature and width calculations | M1.1 |
+| Pydantic | 2.14.2 | MIT | Versioned track and vehicle schemas and validation | M1.1/M2.1 |
+| Shapely | 2.2.0 | BSD-3-Clause; bundled GEOS is LGPL-2.1 | Planar validity, containment, self-intersection and distance checks | M1.1 |
+| types-shapely | 2.1.0.20261030 | Apache-2.0 | Typing stubs for Shapely under strict mypy | M1.1 (dev only) |
 
-M0 adopts Python, uv, pytest, Ruff and mypy. Track and vehicle dependencies are deferred.
+M1.1 adds NumPy, Pydantic, Shapely and the types-shapely development stubs. M2.1 and M3.1 are not implemented yet.
 
 ## Deferred
 
