@@ -121,6 +121,15 @@ Vehicle configuration should cover relevant parameters such as:
 
 Do not imply that a vehicle preset is empirically accurate unless its parameters have a traceable source and validation. Label estimated/default presets as illustrative.
 
+M2.1 kinematic contract (implemented):
+- Reference point: rear axle. State: `x_m`, `y_m`, `heading_rad`, `speed_mps`. Heading is counter-clockwise from world +x; all values are SI.
+- Controls: instantaneous front-wheel steering angle and longitudinal acceleration. Steering rate, reverse motion, tyre forces and actuator dynamics are not modelled.
+- Configuration: schema version 1, model type `kinematic_bicycle`, wheelbase, maximum steering angle (strictly below 90 degrees), maximum acceleration, maximum braking and maximum speed.
+- Integration: fixed positive timestep with an explicit semi-implicit Euler update. Speed is clamped to `[0, max_speed]`; heading is wrapped to `[-pi, pi)`; position is advanced using the updated speed and heading.
+- Validation: configuration values are positive and finite; steering and acceleration controls are finite and within configured limits; state values are finite and speed is non-negative and within the configured maximum; timestep is finite and positive.
+- Determinism: no randomness, wall-clock access, rendering dependency or global mutable simulation state. Repeated runs from identical inputs produce identical states.
+- The model is a kinematic approximation only. It does not establish tyre, load-transfer, actuator or real-world vehicle accuracy.
+
 ## 7. Optimisation approach
 
 Use a staged approach:
@@ -170,8 +179,8 @@ The RL environment must use the same simulation model as validation and optimisa
 - **M1 acceptance:** tracks from the editor use the same normalised geometry contract; verify known distances and calculated length.
 
 ### M2 — Deterministic vehicle prototype
-- Implement a kinematic bicycle model and a fixed-step simulation loop.
-- Add configuration-driven vehicle parameters and unit tests.
+- **M2.1 (implemented):** kinematic bicycle model with a rear-axle state, instantaneous steering and longitudinal acceleration controls, configuration-driven parameters, fixed-step `step_kinematic_bicycle` and `run_fixed_steps` primitives, and focused deterministic tests.
+- **M2.1 limitations:** first-order integration, no reverse motion, no steering actuator dynamics, no tyre forces, no load transfer and no rendering coupling.
 - Acceptance: repeatable runs, predictable straight-line movement and steering response, no dependence on rendering frame rate.
 
 ### M3 — Dynamic model and validation

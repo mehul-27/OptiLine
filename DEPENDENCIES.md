@@ -1,6 +1,6 @@
 # OptiLine Dependency and Licence Register
 
-**Status:** M1.1. Keep this register current when adding, deferring or rejecting a dependency.
+**Status:** M2.1. Keep this register current when adding, deferring or rejecting a dependency.
 **Project licence:** Not selected. Resolve before public distribution or substantial third-party code reuse.
 
 ## Adopted
@@ -17,7 +17,7 @@
 | Shapely | 2.2.0 | BSD-3-Clause; bundled GEOS is LGPL-2.1 | Planar validity, containment, self-intersection and distance checks | M1.1 |
 | types-shapely | 2.1.0.20261030 | Apache-2.0 | Typing stubs for Shapely under strict mypy | M1.1 (dev only) |
 
-M1.1 adds NumPy, Pydantic, Shapely and the types-shapely development stubs. M2.1 and M3.1 are not implemented yet.
+M2.1 adds no new dependency. The kinematic bicycle uses the Python standard library and the existing Pydantic configuration layer; M3.1 is not implemented yet.
 
 ## Deferred
 
