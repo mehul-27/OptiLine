@@ -31,18 +31,24 @@ OptiLine is an engineering simulator with a visual interface, not primarily a ra
 
 ## 3. Initial technology direction
 
-Proposed starting stack, subject to a small proof-of-concept and dependency review:
-- Frontend: React + TypeScript.
-- 2D rendering: HTML Canvas or PixiJS; choose one after a rendering prototype.
-- Backend: Python + FastAPI.
-- Numerics: NumPy and SciPy.
+Approved technology direction (M0, refined after the pre-M1 reuse audit):
+- Frontend: React + TypeScript + Vite.
+- 2D rendering: start with native HTML Canvas 2D. Add Konva/react-konva only if editor interaction complexity justifies it; evaluate PixiJS only if a rendering benchmark shows Canvas is insufficient.
+- Backend: Python 3.12 with FastAPI, introduced when the HTTP boundary is required.
+- Schemas: Pydantic v2 for versioned track and vehicle contracts.
+- Track geometry: NumPy for numeric work and Shapely 2.2 for general planar validity, containment, distance and self-intersection checks. Track-specific corridor, start/finish and calibration rules remain OptiLine code.
+- Numerics: NumPy from M1.1; add SciPy only when a concrete spline, spatial or optimisation need is established.
 - Track and vehicle simulation: custom, deterministic vehicle model; use a general 2D physics engine only if collision/contact requirements justify it.
-- Optimisation: evaluate CasADi for constrained optimal-control formulations.
-- RL interface: Gymnasium.
+- Optimisation: evaluate CasADi for constrained optimal-control formulations at M4. CasADi is LGPL-3.0+ and IPOPT is EPL-2.0; review distribution obligations before adoption.
+- RL interface: Gymnasium, introduced after deterministic simulation and validation exist.
 - RL algorithms: Stable-Baselines3 as the initial candidate.
 - Persistence: JSON track and vehicle configuration files initially; consider SQLite only when the use case requires it.
+- Python tooling: uv for environment and lockfile management; pytest, ruff, and mypy for quality gates.
+- Frontend tooling: npm, Vitest/React Testing Library, Playwright, ESLint, and Prettier, introduced with the frontend.
 
-Do not install all proposed dependencies at once. Select dependencies when a milestone requires them and explain why.
+M0 installed only pytest, ruff, and mypy. M1.1 adds NumPy, Pydantic and Shapely for the track schema and geometry slice. FastAPI, SciPy, CasADi, Gymnasium, Stable-Baselines3 and the frontend stack remain deferred until their milestones.
+
+Do not install all proposed dependencies at once. Select dependencies when a milestone requires them and explain why. Record adopted, deferred and rejected dependencies in `DEPENDENCIES.md`.
 
 ## 4. System boundaries
 
@@ -191,6 +197,7 @@ Milestones can be reordered only with a stated reason. Do not implement the enti
 - Use integration tests before RL training.
 - Include a simple known track fixture with explicit dimensions.
 - Record known limitations and avoid fabricating benchmark results.
+- Review dependency licences, provenance and attribution before copying or porting third-party code.
 
 ## 12. Collaboration and coding-agent rules
 
@@ -205,6 +212,11 @@ When implementing:
 8. If a design decision materially conflicts with this blueprint, explain the trade-off and ask before proceeding.
 9. At the end of each milestone, summarise files changed, behaviour implemented, tests run, known limitations and the next proposed step.
 10. Treat this document as a living specification; propose edits when implementation reveals a meaningful need, rather than silently changing core assumptions.
+11. Use existing implementations as references first. Before copying or porting code, verify its licence, provenance, compatibility and attribution requirements, and record the decision in `DEPENDENCIES.md`.
+12. Do not reuse unlicensed code. LGPL/EPL/MPL code requires a specific integration decision and legal review before it enters the core.
+13. Do not introduce an external simulator or physics engine as the authoritative core without new evidence that its benefits outweigh integration and physics-consistency costs.
+14. Keep milestone changes separate and reviewable; do not mix M0 cleanup, M1.1 track work and later experiments in one change set.
+15. Do not claim optimality or real-world physical accuracy beyond what tests establish.
 
 ## 13. First implementation task
 

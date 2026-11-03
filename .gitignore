@@ -1,5 +1,37 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+.venv/
 venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+*.egg-info/
+build/
+dist/
+
+# Node / frontend
+node_modules/
+*.tsbuildinfo
+.vite/
+
+# Environment
 .env
-data/processed/
+.env.*
+!.env.example
+
+# Local data and generated artifacts
+data/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+
+# Command Code tool state
+.commandcode/
