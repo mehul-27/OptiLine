@@ -130,6 +130,18 @@ M2.1 kinematic contract (implemented):
 - Determinism: no randomness, wall-clock access, rendering dependency or global mutable simulation state. Repeated runs from identical inputs produce identical states.
 - The model is a kinematic approximation only. It does not establish tyre, load-transfer, actuator or real-world vehicle accuracy.
 
+M3.1 dynamic contract (implemented):
+- Six-state rear-axle representation: `X_m`, `Y_m`, `heading_rad`, `v_x_mps`, `v_y_mps`, `yaw_rate_radps`. Body axes are +x forward and +y left; heading is counter-clockwise from world +x; all values are SI.
+- Configuration: mass, yaw inertia, front/rear axle distances, front/rear cornering stiffness, maximum steering angle (strictly below 90 degrees), maximum acceleration, maximum braking, maximum speed and the low-speed transition start/end speeds. Parameters are finite and physically positive; the transition end must exceed the start and must not exceed maximum speed.
+- Tyres: linear cornering stiffness. With rear-axle velocities, `beta_f = atan2(v_y + (l_f + l_r) * r, v_x)`, `alpha_f = steering - beta_f`, `beta_r = atan2(v_y, v_x)`, `alpha_r = -beta_r`, `F_yf = C_f * alpha_f`, `F_yr = C_r * alpha_r`. Positive steering, slip angle and lateral force are to the left.
+- Body forces and moments: `F_yf_body = F_yf * cos(steering)`, `F_xf_body = -F_yf * sin(steering)`, longitudinal force includes the driver acceleration command plus steering drag, and the yaw moment about the CG is `l_f * F_yf_body - l_r * F_yr`.
+- Longitudinal-control semantics: `longitudinal_acceleration_mps2` is an acceleration-equivalent longitudinal force command `m * a_x`, not the realised body acceleration. The realised `v_x_dot` also includes the front tyre steering drag, Coriolis and CG-offset terms. At zero steering, lateral velocity and yaw rate, the command and realised longitudinal acceleration coincide.
+- Derivation of the rear-axle CG correction: the CG velocity is `(v_x, v_y + l_r*r)` and its body acceleration is `(v_x_dot - r*v_y - l_r*r^2, v_y_dot + r*v_x + l_r*r_dot)`. Equating `m*a_CG` to the body forces and using `I_z*r_dot = l_f*F_yf_body - l_r*F_yr` gives the equations below. The front-axle velocity is `(v_x, v_y + (l_f + l_r)*r)` and the rear-axle velocity is `(v_x, v_y)`, which produces the slip-angle expressions above.
+- Equations of motion: `r_dot = M / I_z`; `v_x_dot = F_x / m + r * v_y + r^2 * l_r`; `v_y_dot = F_y / m - r * v_x - r_dot * l_r`; world position uses the body-to-world rotation. The CG-offset terms are required because the reference point is the rear axle.
+- Low-speed behaviour: a smoothstep blend from kinematic to dynamic behaviour between configurable start and end speeds. At or below the start speed the M2.1 kinematic model is used; at or above the end speed the dynamic model is used; in between, position, heading, longitudinal speed, lateral speed and yaw rate are blended. The blend operates on two next states independently advanced by one timestep from the same initial state, control and timestep; it does not blend derivatives. The kinematic branch contributes zero lateral velocity and its kinematic yaw rate. Heading interpolation uses the shortest angular difference. The dynamic equations are evaluated only when the current longitudinal speed is above the transition start. Longitudinal speed is clamped to `[0, max_speed]`; lateral velocity and yaw rate are not clamped; reverse motion is not supported. The blend is defined for states evolved through the model; an arbitrary state constructed below the transition with non-zero lateral velocity or yaw rate is outside the supported low-speed contract.
+- Integration: RK4 and semi-implicit Euler are both implemented and tested with identical parameters, states, controls and timesteps. RK4 is selected for M3.1 because it is substantially more accurate at the same timestep on constant-cornering and braking-cornering cases, while both methods remain finite in the low-speed transition and long-run tests. The method is explicit in `DynamicSimulationConfig`; it is never changed silently during a run.
+- Limitations: linear tyres only; no saturation, load transfer, combined slip, aerodynamics, suspension or four-wheel effects; the low-speed blend is a controlled approximation, not a general low-speed tyre model; no reverse motion. The model is not evidence of real-world vehicle accuracy.
+
 ## 7. Optimisation approach
 
 Use a staged approach:
@@ -184,7 +196,8 @@ The RL environment must use the same simulation model as validation and optimisa
 - Acceptance: repeatable runs, predictable straight-line movement and steering response, no dependence on rendering frame rate.
 
 ### M3 — Dynamic model and validation
-- Add dynamic bicycle behaviour incrementally, including documented tyre/grip assumptions.
+- **M3.1 (implemented):** six-state rear-axle dynamic single-track model with linear cornering stiffness, a smooth low-speed kinematic/dynamic blend, RK4 and semi-implicit Euler comparison, configuration/state validation and deterministic tests.
+- **M3.1 limitations:** linear tyres, no saturation, load transfer, combined slip, aerodynamics, suspension, four-wheel effects or reverse motion; the low-speed blend is a controlled approximation.
 - Acceptance: tests for braking, turning, grip limits and numerical stability; all model limitations documented.
 
 ### M4 — Baseline path and speed optimiser
@@ -219,6 +232,7 @@ Milestones can be reordered only with a stated reason. Do not implement the enti
 - Test derived-centerline continuity and ensure unsupported non-convex corridors are not marked simulation-ready.
 - Test analytic circle/oval lengths, widths and curvature within documented numerical tolerances; derive tolerances from discretization rather than tightening them arbitrarily.
 - Test deterministic physics with fixed initial states and inputs.
+- Test dynamic-model slip-angle signs, understeer/oversteer response, low-speed transitions, RK4/Euler comparison, timestep convergence and long-run numerical stability.
 - Test track validation for invalid geometry and boundary departures.
 - Test optimiser feasibility independently of its objective score.
 - Test API data contracts and schema validation.
