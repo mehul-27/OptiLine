@@ -157,6 +157,27 @@ Provide a benchmark that is deterministic and repeatable. Distinguish solver con
 
 M1.1 does not implement the optimiser. The first optimiser work remains a later, bounded experiment after the track and vehicle interfaces are stable. Use existing racing-line projects as references first; verify licence, provenance and compatibility before copying or porting code. Record the solver version, options, tolerances, warm-start state and validation results with every benchmark. Do not copy LGPL TUM code into the core without legal review.
 
+M4.1 baseline-planning contract (implemented):
+- Baseline path: the validated M1.1 track centreline is used directly. It is a geometric baseline, not a racing line, offset line or safety-boundary replacement. The track must be simulation-ready before a path is built.
+- Closure representation: paths and speed profiles contain `N + 1` samples for `N` unique samples. The final sample repeats the first geometric position at `s = length`, carries the same tangent and curvature, and creates a real final interval from the penultimate sample to `s = length`. There is no artificial zero-length interval. Profile start and end speeds match.
+- Arc length and curvature: path samples carry cumulative arc length, unit tangents and signed discrete curvature. Curvature is computed from the validated centreline with the existing widened-stencil method.
+- Planning limits: `PlanningLimits` contains maximum speed, maximum longitudinal acceleration, maximum braking deceleration and maximum lateral acceleration. Speed and longitudinal limits are snapshotted from the authoritative dynamic vehicle configuration via `from_dynamic_vehicle_config`; the lateral limit is supplied explicitly as an independent planning constraint.
+- Lateral limit: the initial demo value is `4.0 m/s^2`. It is an illustrative engineering assumption, not a measured grip limit, a tyre-model output or a universal vehicle property. It is configurable.
+- Speed profile: curvature caps and maximum speed initialize unique samples; cyclic forward acceleration and backward braking passes run around the closed loop until convergence. The final interval participates in acceleration, braking and lap-time calculations.
+- Lap timing: flying closed lap only. Each interval uses `dt = 2*ds / (v_i + v_{i+1})`; the final interval is included. Standing-start behaviour is outside M4.1.
+- Independent feasibility: a separate validator independently recomputes path arc length/chord intervals, tangents, curvature, interval acceleration/braking, lateral acceleration, closure and lap time from the path and speed data. It also checks that every path segment is wholly inside the track corridor; a smooth centreline is not assumed to be a valid path. Corrupted stored curvature, arc length or tangent data is rejected.
+- Sampling limitation: lateral acceleration is checked at path samples against the sampled curvature. Curvature between samples is not reconstructed, so coarse or highly discontinuous sampling can under-represent the underlying smooth geometry. M4.1 analytic tests use 360/720 samples. The minimum builder sample count is a coarse candidate and may produce chords that leave a curved or narrow corridor; the independent validator rejects such a result.
+- Limits of scope: no CasADi, IPOPT, nonlinear optimisation, racing-line optimisation, controller, RL, frontend or API. No global minimum-time optimality claim. The baseline is not a validated tyre-grip prediction.
+
+M4.2 racing-line contract (implemented):
+- Representation: periodic cubic B-spline lateral offsets from the M4.1 centreline. Zero offsets reproduce the M4.1 centreline exactly. The resulting `RacingLinePath` retains the `N + 1` closed-path convention and stores control offsets, sampled offsets, reference-baseline identity and optimiser provenance.
+- Boundary constraints: local normal-line intersections with the actual inner and outer boundaries define per-sample offset bounds. The nearest boundary intersection on each side is used; missing intersections, boundary overlaps and multiple ambiguous nearest intersections are rejected. A configurable positive boundary-clearance margin is applied, with an initial default of `0.5 m`.
+- Geometric objective: minimise `sum(kappa_i^2 * ds_i)` with deterministic SciPy SLSQP. This is minimum curvature energy, not lap time and not a global optimum.
+- Candidate evaluation: each candidate is adapted to the M4.1 path interface, evaluated by the unchanged M4.1 speed-profile builder and independently validated. The validator adds self-intersection, boundary-clearance, offset-bound, offset-fold, spline-provenance and reference-identity checks.
+- Selection: the M4.1 baseline is always a candidate. A candidate is reported as a meaningful improvement only when it is independently feasible and `candidate_lap_time < baseline_lap_time - threshold`. The threshold is a configurable numerical reporting tolerance, not a physical parameter; its default is `0.01 s`. Otherwise the baseline is selected and no improvement is claimed.
+- Limitations: local geometric optimisation, pointwise lateral checks, no direct lap-time objective, no racing-line global optimality claim and no real-world tyre-grip claim. A minimum-curvature line may be slower; the circle test demonstrates this fallback.
+- Dependencies: SciPy 1.18.1 under BSD-3-Clause (with bundled OpenBLAS/LAPACK and GCC runtime components recorded in `DEPENDENCIES.md`). No CasADi, IPOPT, RL, controller or frontend work.
+
 ## 8. Reinforcement learning
 
 RL is complementary to the optimiser, not a replacement for it. The optimiser supplies a benchmark and may optionally provide a reference trajectory.
@@ -201,8 +222,10 @@ The RL environment must use the same simulation model as validation and optimisa
 - Acceptance: tests for braking, turning, grip limits and numerical stability; all model limitations documented.
 
 ### M4 — Baseline path and speed optimiser
-- Produce a track-valid path and a physically feasible speed profile.
-- Add lap timing and independent feasibility checks.
+- **M4.1 (implemented):** centreline-derived baseline path, arc-length and signed-curvature data, configurable planning limits, cyclic forward/backward flying-lap speed profile, deterministic lap timing, independent feasibility/corridor validation and analytic circle/oval tests.
+- **M4.2 (implemented):** periodic B-spline lateral-offset racing line, boundary-constrained minimum-curvature SLSQP optimization, M4.1 speed-profile reuse through an adapter, independent racing-line validation, deterministic baseline fallback and validated lap-time comparison.
+- **M4.1 limitations:** centreline-only baseline, constant lateral-acceleration planning constraint, pointwise sampled lateral checks, no curvature reconstruction between samples, no tyre-saturation/load-transfer/combined-slip model, no offset/racing line in the baseline, no standing start and no optimiser in M4.1. The `4.0 m/s^2` lateral limit is illustrative.
+- **M4.2 limitations:** geometric minimum-curvature objective only; local SLSQP optimization; pointwise lateral checks; boundary offset bounds use nearest local normal intersections; no direct lap-time optimization, no global optimality and no real-world grip claim. A minimum-curvature candidate may be slower and is then rejected in favour of the baseline.
 - Evaluate CasADi/IPOPT in a bounded experiment only after the vehicle and track interfaces are stable; record solver metadata and validate every candidate lap in the authoritative simulation.
 - Acceptance: valid laps on simple test circuits; optimised time is compared with a baseline and no improvement is claimed without measurement.
 
@@ -233,6 +256,8 @@ Milestones can be reordered only with a stated reason. Do not implement the enti
 - Test analytic circle/oval lengths, widths and curvature within documented numerical tolerances; derive tolerances from discretization rather than tightening them arbitrarily.
 - Test deterministic physics with fixed initial states and inputs.
 - Test dynamic-model slip-angle signs, understeer/oversteer response, low-speed transitions, RK4/Euler comparison, timestep convergence and long-run numerical stability.
+- Test baseline path closure and arc length, speed-profile limits and convergence, flying-lap timing, independent feasibility and corridor containment on the analytic circle and oval.
+- Test racing-line spline closure, boundary constraints, self-intersection, offset folding, corridor clearance, deterministic SLSQP, baseline fallback and independently validated lap-time comparison.
 - Test track validation for invalid geometry and boundary departures.
 - Test optimiser feasibility independently of its objective score.
 - Test API data contracts and schema validation.

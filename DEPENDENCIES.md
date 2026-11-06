@@ -1,6 +1,6 @@
 # OptiLine Dependency and Licence Register
 
-**Status:** M3.1. Keep this register current when adding, deferring or rejecting a dependency.
+**Status:** M4.2. Keep this register current when adding, deferring or rejecting a dependency.
 **Project licence:** Not selected. Resolve before public distribution or substantial third-party code reuse.
 
 ## Adopted
@@ -15,15 +15,15 @@
 | NumPy | 2.5.4 | BSD-3-Clause | Numeric geometry, resampling, curvature and width calculations | M1.1 |
 | Pydantic | 2.14.2 | MIT | Versioned track and vehicle schemas and validation | M1.1/M2.1 |
 | Shapely | 2.2.0 | BSD-3-Clause; bundled GEOS is LGPL-2.1 | Planar validity, containment, self-intersection and distance checks | M1.1 |
+| SciPy | 1.18.1 | BSD-3-Clause; bundled OpenBLAS (BSD-3-Clause), LAPACK (BSD-3-Clause-Open-MPI), GCC runtime (GPL-3.0-or-later WITH GCC-exception-3.1) | Periodic spline and constrained SLSQP racing-line optimization | M4.2 |
 | types-shapely | 2.1.0.20261030 | Apache-2.0 | Typing stubs for Shapely under strict mypy | M1.1 (dev only) |
 
-M2.1 and M3.1 add no new dependency. The kinematic and dynamic bicycle models use the Python standard library and the existing Pydantic configuration layer.
+M2.1 and M3.1 add no new dependency. The kinematic and dynamic bicycle models use the Python standard library and the existing Pydantic configuration layer. M4.1 added no dependency; baseline planning uses the existing NumPy, Pydantic and Shapely stack. M4.2 adds SciPy 1.18.1 for periodic spline interpolation and SLSQP constrained geometric optimization.
 
 ## Deferred
 
 | Dependency | Intended milestone | Licence | Purpose | Reason for deferral |
 |---|---|---|---|---|
-| SciPy | M1.2/M4 | BSD-3-Clause | Splines, spatial queries and optimisation | No concrete need yet; NumPy + Shapely cover M1.1 |
 | FastAPI + uvicorn | M1.2/M5 | MIT / BSD-3-Clause | HTTP API | No API boundary in M1.1 |
 | React + TypeScript + Vite | M1.2/M5 | MIT / Apache-2.0 / MIT | Frontend editor and telemetry UI | No frontend in M1.1 |
 | react-konva / Konva | Frontend milestone | MIT | Canvas scene graph and editing interactions | Use native Canvas 2D first; add only if interaction complexity justifies it |
